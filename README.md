@@ -146,7 +146,7 @@ mvn clean package && java -jar target/HFuture-0.0.1-SNAPSHOT.jar
   "code": 200,
   "msg": "获取用户信息成功",
   "data": {
-    "studentId": "2025218716",
+    "studentId": "2025XXXXXX",
     "name": "XXX",
     "major": "软件工程",
     "college": "软件学院",
