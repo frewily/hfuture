@@ -1,0 +1,49 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://test-server:3306/hfuture_test?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${DB_USER:hfuture_test}
+    password: ${DB_PASSWORD:Test@123456}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  
+  data:
+    redis:
+      host: test-redis-server
+      port: 6379
+      password: ${REDIS_PASSWORD:}
+      database: 1
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 16
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 2
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+logging:
+  level:
+    top.hfuture: info
+    org.springframework.web: info
+
+hfut:
+  cas:
+    base-url: http://cas.hfut.edu.cn/cas
+    login-url: ${hfut.cas.base-url}/login
+    vercode-url: ${hfut.cas.base-url}/vercode
+    check-init-url: ${hfut.cas.base-url}/checkInitParams
+  
+  eams:
+    base-url: http://jxglstu.hfut.edu.cn/eams5-student
+    sso-login-url: ${hfut.eams.base-url}/neusoft-sso/login
+    course-table-url: ${hfut.eams.base-url}/for-std/course-table
+    get-data-url: ${hfut.eams.base-url}/for-std/course-table/get-data
+    schedule-datum-url: ${hfut.eams.base-url}/ws/schedule-table/datum
