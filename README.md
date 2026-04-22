@@ -104,7 +104,7 @@ mvn clean package && java -jar target/HFuture-0.0.1-SNAPSHOT.jar
 ```json
 {
   "loginSessionId": "a1b2c3d4...",
-  "studentId": "2025218716",
+  "studentId": "2025XXXXXX",
   "password": "your_password",
   "captcha": "1234"
 }
@@ -119,8 +119,8 @@ mvn clean package && java -jar target/HFuture-0.0.1-SNAPSHOT.jar
   "data": {
     "token": "eyJhbGciOiJIUzUxMiJ9...",
     "userInfo": {
-      "studentId": "2025218716",
-      "name": "付诺",
+      "studentId": "2025XXXXXX",
+      "name": "XXX",
       "major": "软件工程",
       "college": "软件学院",
       "avatarFrame": "beta_tester"
@@ -146,8 +146,8 @@ mvn clean package && java -jar target/HFuture-0.0.1-SNAPSHOT.jar
   "code": 200,
   "msg": "获取用户信息成功",
   "data": {
-    "studentId": "2025218716",
-    "name": "付诺",
+    "studentId": "2025XXXXXX",
+    "name": "XXX",
     "major": "软件工程",
     "college": "软件学院",
     "avatarFrame": "beta_tester"
