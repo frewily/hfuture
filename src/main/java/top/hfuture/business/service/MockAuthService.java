@@ -20,9 +20,10 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class MockAuthService {
 
+    private final OkHttpClient okHttpClient;
     private final HfutProperties hfutProperties;
-    private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
 
+    private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
     private static final Pattern EXECUTION_PATTERN = Pattern.compile("name=\"execution\"\\s+value=\"([^\"]+)\"");
 
     private boolean useMock = false;
@@ -240,6 +241,4 @@ public class MockAuthService {
         }
         return null;
     }
-
-    private OkHttpClient okHttpClient;
 }

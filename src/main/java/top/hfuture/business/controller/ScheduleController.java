@@ -70,6 +70,8 @@ public class ScheduleController {
                             .classroom(detail.getRoomName() != null ? detail.getRoomName() : "")
                             .dayOfWeek(detail.getWeekDay() != null ? detail.getWeekDay() : 0)
                             .section(formatSection(detail.getStartUnit(), detail.getEndUnit()))
+                            .weekInfo(detail.getWeekInfo() != null ? detail.getWeekInfo() : "")
+                            .campusName(detail.getCampusName() != null ? detail.getCampusName() : "")
                             .build();
                     response.add(schedule);
                 }

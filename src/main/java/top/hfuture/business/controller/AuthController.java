@@ -2,6 +2,8 @@ package top.hfuture.business.controller;
 
 import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson2.JSON;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -9,6 +11,8 @@ import org.springframework.web.bind.annotation.*;
 import top.hfuture.business.dto.CaptchaResponse;
 import top.hfuture.business.dto.LoginRequest;
 import top.hfuture.business.dto.LoginResponse;
+import top.hfuture.business.entity.Student;
+import top.hfuture.business.mapper.StudentMapper;
 import top.hfuture.business.model.SessionInfo;
 import top.hfuture.business.service.CasAuthService;
 import top.hfuture.business.service.CourseTableFacadeService;
@@ -19,8 +23,6 @@ import top.hfuture.common.util.JwtUtil;
 
 import java.util.Base64;
 import java.util.UUID;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -35,6 +37,7 @@ public class AuthController {
     private final CourseTableFacadeService courseTableFacadeService;
     private final StringRedisTemplate redisTemplate;
     private final JwtUtil jwtUtil;
+    private final StudentMapper studentMapper;
     
     private static final String LOGIN_SESSION_PREFIX = "hfut:login-session:";
     private static final long LOGIN_SESSION_TIMEOUT_MINUTES = 5;
@@ -129,9 +132,12 @@ public class AuthController {
             }
             
             String token = jwtUtil.generateToken(request.getStudentId());
-            
+
             String sessionKey = "hfut:session:" + request.getStudentId();
             redisTemplate.opsForValue().set(sessionKey, JSON.toJSONString(sessionInfo), 3, TimeUnit.HOURS);
+
+            // 持久化学生信息到数据库（存在则更新，否则插入）
+            saveOrUpdateStudent(request.getStudentId(), sessionInfo, sessionKey);
             
             LoginResponse.UserInfo userInfo = LoginResponse.UserInfo.builder()
                     .studentId(request.getStudentId())
@@ -152,5 +158,50 @@ public class AuthController {
             log.error("登录失败", e);
             return Result.error(500, "登录失败: " + e.getMessage());
         }
+    }
+
+    private void saveOrUpdateStudent(String studentId, SessionInfo sessionInfo, String sessionKey) {
+        try {
+            Student existing = studentMapper.selectOne(
+                    new LambdaQueryWrapper<Student>().eq(Student::getStudentNo, studentId));
+            if (existing != null) {
+                existing.setName(sessionInfo.getStudentName());
+                existing.setDataId(sessionInfo.getDataId());
+                existing.setBizTypeId(sessionInfo.getBizTypeId());
+                existing.setSessionKey(sessionKey);
+                studentMapper.updateById(existing);
+                log.debug("学生信息已更新: {}", studentId);
+            } else {
+                Student student = new Student();
+                student.setStudentNo(studentId);
+                student.setName(sessionInfo.getStudentName());
+                student.setDataId(sessionInfo.getDataId());
+                student.setBizTypeId(sessionInfo.getBizTypeId());
+                student.setSessionKey(sessionKey);
+                studentMapper.insert(student);
+                log.debug("学生信息已插入: {}", studentId);
+            }
+        } catch (Exception e) {
+            log.warn("持久化学生信息失败（不影响登录）: {}", e.getMessage());
+        }
+    }
+
+    @GetMapping("/me")
+    public Result<LoginResponse.UserInfo> getMe(HttpServletRequest request) {
+        String studentId = (String) request.getAttribute("studentId");
+        String sessionKey = "hfut:session:" + studentId;
+        String json = redisTemplate.opsForValue().get(sessionKey);
+        if (json == null) {
+            return Result.error(401, "会话已过期，请重新登录");
+        }
+        SessionInfo sessionInfo = JSON.parseObject(json, SessionInfo.class);
+        LoginResponse.UserInfo userInfo = LoginResponse.UserInfo.builder()
+                .studentId(studentId)
+                .name(sessionInfo.getStudentName() != null ? sessionInfo.getStudentName() : "用户" + studentId)
+                .major(sessionInfo.getMajor() != null ? sessionInfo.getMajor() : "未知专业")
+                .college(sessionInfo.getCollege() != null ? sessionInfo.getCollege() : "未知学院")
+                .avatarFrame("beta_tester")
+                .build();
+        return Result.success("获取用户信息成功", userInfo);
     }
 }

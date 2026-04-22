@@ -1,218 +1,239 @@
-# HFuture - 合肥工业大学教务系统课表抓取系统
+# HFuture - 合肥工业大学教务系统课表抓取 API
 
-## 项目简介
-
-本项目基于 Spring Boot 4.0.5 + Java 21 开发，实现了合肥工业大学教务系统（EAMS5）课表数据的自动抓取功能。系统通过模拟 CAS 统一认证登录，穿透 SSO 鉴权，最终获取学生的完整课表数据。
+基于 Spring Boot 开发，模拟 CAS 统一认证 + SSO 鉴权，自动获取合肥工业大学 EAMS5 课表数据，并以 JSON API 形式对外提供。
 
 ## 技术栈
 
-- **框架**: Spring Boot 4.0.5
-- **Java版本**: Java 21
-- **数据库**: MySQL 8.0+
-- **缓存**: Redis
-- **ORM**: MyBatis-Plus 3.5.7
-- **HTTP客户端**: OkHttp 4.12.0
-- **工具库**: Hutool 5.8.26, Jsoup 1.17.2, Fastjson2 2.0.47
-
-## 核心功能
-
-### 1. CAS 统一认证（阶段一）
-- 初始化 CAS 会话，获取 Cookie 和 execution 参数
-- 获取图片验证码和风控 Cookie
-- 提交账号密码登录，获取 TGC 凭证
-
-### 2. SSO 鉴权与会话激活（阶段二）
-- 申请教务系统专属 Ticket
-- 换取并激活教务 SESSION
-
-### 3. 课表数据获取（阶段三）
-- 提取学生内部 ID (dataId)
-- 获取全局环境变量 (bizTypeId & semesterId)
-- 获取本学期课程汇总
-- 获取最终完整课表
-
-## 项目结构
-
-```
-src/main/java/top/hfuture/
-├── common/
-│   ├── dto/              # 通用DTO
-│   ├── entity/           # 基础实体类
-│   └── exception/        # 异常处理
-├── config/               # 配置类
-├── business/
-│   ├── controller/       # 控制器
-│   ├── dto/              # 业务DTO
-│   ├── entity/           # 业务实体
-│   ├── mapper/           # MyBatis Mapper
-│   ├── model/            # 业务模型
-│   └── service/          # 业务服务
-└── HFutureApplication.java
-```
+| 组件 | 版本 |
+|------|------|
+| Spring Boot | 4.0.5 |
+| Java | 21 |
+| MySQL | 8.0+ |
+| Redis | 6.0+ |
+| MyBatis-Plus | 3.5.7 |
+| OkHttp | 4.12.0 |
+| Fastjson2 | 2.0.47 |
+| Hutool | 5.8.26 |
 
 ## 快速开始
 
 ### 1. 环境准备
 
-确保已安装以下环境：
-- JDK 21+
-- MySQL 8.0+
-- Redis 6.0+
-- Maven 3.8+
+- JDK 21+、MySQL 8.0+、Redis 6.0+、Maven 3.8+
 
 ### 2. 数据库初始化
 
 ```bash
-# 创建数据库并执行初始化脚本
 mysql -u root -p < src/main/resources/schema.sql
 ```
 
-### 3. 配置文件修改
+> 默认数据库名 `hfuture_db`，如需修改请同步更改 `application-dev.yml`。
 
-修改 `src/main/resources/application.yaml`：
+### 3. 修改配置
+
+编辑 `src/main/resources/application-dev.yml`：
 
 ```yaml
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/hfuture?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: your_username
+    url: jdbc:mysql://localhost:3306/hfuture_dev?...
+    username: root
     password: your_password
-  
   data:
     redis:
       host: localhost
       port: 6379
-      password: your_redis_password
+      password:       # 无密码留空
 ```
 
-### 4. 启动项目
+### 4. 启动
 
 ```bash
-# 编译项目
-mvn clean package
-
-# 运行项目
-java -jar target/HFuture-0.0.1-SNAPSHOT.jar
+mvn spring-boot:run
+# 或
+mvn clean package && java -jar target/HFuture-0.0.1-SNAPSHOT.jar
 ```
 
-## API 接口
+服务默认监听 `http://localhost:8080`。
 
-### 1. 登录接口
+---
 
-**POST** `/api/course/login`
+## API 文档
 
-请求体：
+所有接口返回统一格式：
+
 ```json
-{
-  "username": "学号",
-  "password": "密码",
-  "captcha": "验证码"
-}
+{ "code": 200, "msg": "...", "data": { ... } }
 ```
 
-响应：
+需要登录的接口在 `Authorization` 请求头中携带 `Bearer <token>`。
+
+---
+
+### 1. 获取验证码
+
+**GET** `/api/v1/auth/captcha`
+
+无需认证。
+
+**响应**
+
 ```json
 {
   "code": 200,
-  "message": "登录成功",
+  "msg": "获取验证码成功",
   "data": {
-    "studentNo": "2025xxxxxx",
-    "tgc": "TGC-xxx",
-    "session": "xxx",
-    "dataId": 123456,
-    "bizTypeId": 2,
-    "semesterId": 334
+    "loginSessionId": "a1b2c3d4...",
+    "captchaImage": "data:image/jpeg;base64,/9j/..."
   }
 }
 ```
 
-### 2. 获取课表接口
+> `loginSessionId` 有效期 5 分钟，登录时需要携带。
 
-**POST** `/api/course/table`
+---
 
-请求体：
+### 2. 登录
+
+**POST** `/api/v1/auth/login`
+
+无需认证。
+
+**请求体**
+
 ```json
 {
-  "username": "学号",
-  "password": "密码",
-  "captcha": "验证码"
+  "loginSessionId": "a1b2c3d4...",
+  "studentId": "2025218716",
+  "password": "your_password",
+  "captcha": "1234"
 }
 ```
 
-响应：
+**响应**
+
 ```json
 {
   "code": 200,
-  "message": "获取课表成功",
+  "msg": "登录成功",
+  "data": {
+    "token": "eyJhbGciOiJIUzUxMiJ9...",
+    "userInfo": {
+      "studentId": "2025218716",
+      "name": "付诺",
+      "major": "软件工程",
+      "college": "软件学院",
+      "avatarFrame": "beta_tester"
+    }
+  }
+}
+```
+
+> Token 有效期 24 小时，教务 Session 有效期 3 小时。
+
+---
+
+### 3. 获取当前用户信息
+
+**GET** `/api/v1/auth/me`
+
+需要认证。无需请求参数。
+
+**响应**
+
+```json
+{
+  "code": 200,
+  "msg": "获取用户信息成功",
+  "data": {
+    "studentId": "2025218716",
+    "name": "付诺",
+    "major": "软件工程",
+    "college": "软件学院",
+    "avatarFrame": "beta_tester"
+  }
+}
+```
+
+---
+
+### 4. 获取当前课表
+
+**GET** `/api/v1/schedule/current`
+
+需要认证。无需请求参数，自动使用当前学期。
+
+**响应**
+
+```json
+{
+  "code": 200,
+  "msg": "获取课表成功",
   "data": [
     {
-      "lessonId": 123456,
-      "courseCode": "0000001X--001",
       "courseName": "数据结构",
-      "courseTypeName": "通识必修课",
-      "teacherName": "张老师",
-      "actualPeriods": 48,
-      "suggestScheduleWeekInfo": "1~16",
-      "scheduleDetails": [
-        {
-          "weekDay": 1,
-          "startUnit": 1,
-          "endUnit": 2,
-          "roomName": "教学楼A101",
-          "campusName": "翡翠湖校区",
-          "weekInfo": "1~16"
-        }
-      ]
+      "teacher": "张老师",
+      "classroom": "翡翠湖校区 教A101(100)",
+      "dayOfWeek": 1,
+      "section": "1-2",
+      "weekInfo": "1~18",
+      "campusName": "翡翠湖校区"
     }
   ]
 }
 ```
 
+| 字段 | 说明 |
+|------|------|
+| `dayOfWeek` | 星期几，1=周一，7=周日 |
+| `section` | 节次范围，如 `"3-4"` 表示第3-4节 |
+| `weekInfo` | 上课周次，如 `"1~18"` |
+| `campusName` | 校区名称 |
+
+---
+
+## 系统架构
+
+```
+客户端请求
+    │
+    ├─ GET  /api/v1/auth/captcha    → CasAuthService.initCasSession()
+    │                                  → 返回验证码图片 + loginSessionId
+    │
+    ├─ POST /api/v1/auth/login      → CasAuthService.casLogin()        (CAS 登录，获取 TGC)
+    │                                  → SsoAuthService.getTicket()     (申请 Ticket)
+    │                                  → SsoAuthService.activateSession() (激活 EAMS SESSION)
+    │                                  → CourseTableService.getDataId() (获取学生 dataId)
+    │                                  → CourseTableService.getEnvironmentVariables() (bizTypeId/semesterId)
+    │                                  → CourseTableService.fetchStudentInfoFromHome() (姓名/专业/学院)
+    │                                  → 写入 Redis (hfut:session:{studentId}, 3h)
+    │                                  → 写入 MySQL t_student (upsert)
+    │                                  → 返回 JWT Token + userInfo
+    │
+    ├─ GET  /api/v1/auth/me         → 读 Redis → 返回 userInfo
+    │
+    └─ GET  /api/v1/schedule/current → 读 Redis → CourseTableService.getCourseTable()
+                                        → EAMS get-data API → 解析课程数据 → 返回
+```
+
+## 数据库表结构
+
+```sql
+-- 学生信息（登录时自动 upsert）
+t_student: id, student_no, name, data_id, biz_type_id, session_key, ...
+
+-- 课程信息（预留，当前未写入）
+t_course: id, lesson_id, course_code, course_name, teacher_name, semester_id, ...
+
+-- 课表安排（预留，当前未写入）
+t_schedule: id, student_id, course_id, week_day, start_unit, end_unit,
+            room_name, campus_name, week_info, semester_id, ...
+```
+
 ## 注意事项
 
-### 1. 验证码处理
-目前系统需要手动输入验证码。后续可以集成 OCR 识别或第三方验证码识别服务。
-
-### 2. 密码加密
-系统使用 AES ECB 算法对密码进行加密，密钥为 `hfut1234567890ab`。如需修改，请更新 [CasAuthService.java](src/main/java/top/hfuture/business/service/CasAuthService.java) 中的 `AES_KEY` 常量。
-
-### 3. 会话管理
-- 教务 SESSION 有效期为 3 小时
-- 系统会自动将会话信息存储到 Redis 中
-- 如果会话失效，系统会自动重新登录
-
-### 4. Cookie 维护
-系统使用 OkHttp 的 Cookie Jar 机制自动维护 Cookie，确保会话的连续性。
-
-## 常见问题
-
-### 1. 登录失败
-- 检查用户名、密码是否正确
-- 检查验证码是否正确
-- 检查网络连接是否正常
-
-### 2. 获取课表失败
-- 检查 SESSION 是否有效
-- 检查 Redis 连接是否正常
-- 查看日志排查具体错误
-
-### 3. 数据库连接失败
-- 检查 MySQL 服务是否启动
-- 检查数据库配置是否正确
-- 检查数据库用户权限
-
-## 开发计划
-
-- [ ] 集成验证码自动识别
-- [ ] 添加课表数据持久化功能
-- [ ] 实现课表数据定时同步
-- [ ] 添加课表导出功能（Excel、PDF）
-- [ ] 开发前端界面
-
-## 许可证
-
-本项目仅供学习和研究使用，请勿用于商业用途。
-
-## 联系方式
-
-如有问题或建议，请提交 Issue 或 Pull Request。
+- **密码加密**：CAS 登录使用 AES ECB 加密，密钥从 `LOGIN_FLAVORING` Cookie 动态获取。
+- **验证码**：需要用户手动识别，`loginSessionId` 5 分钟内有效。
+- **Session 有效期**：教务 SESSION 3 小时后失效，需重新登录。
+- **semesterId**：从课表页 `<option selected>` 自动解析，无需手动配置。
+- **本项目仅供学习研究使用，请勿用于商业或违规用途。**
