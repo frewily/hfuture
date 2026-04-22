@@ -397,8 +397,8 @@ public class CourseTableService {
         
         JSONObject courseExt = lesson.getJSONObject("courseExt");
         if (courseExt != null) {
-            course.setCourseTypeName(courseExt.getString("courseType") != null ? 
-                courseExt.getJSONObject("courseType").getString("nameZh") : null);
+            JSONObject courseType = courseExt.getJSONObject("courseType");
+            course.setCourseTypeName(courseType != null ? courseType.getString("nameZh") : null);
         }
         
         JSONObject requiredPeriodInfo = lesson.getJSONObject("requiredPeriodInfo");

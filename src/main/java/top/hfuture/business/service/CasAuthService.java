@@ -28,7 +28,6 @@ public class CasAuthService {
     private final top.hfuture.config.MockProperties mockProperties;
 
     private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-    private static final String AES_KEY = "hfut1234567890ab";
     private static final Pattern EXECUTION_PATTERN = Pattern.compile("name=\"execution\"\\s+value=\"([^\"]+)\"");
 
     public SessionInfo initCasSession() throws IOException {
